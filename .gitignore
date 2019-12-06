@@ -1,0 +1,7 @@
+**/bin/
+**/Logs/*
+**/obj/
+**/.vs/
+**/*.user
+**/.idea/
+**/*.pyc
