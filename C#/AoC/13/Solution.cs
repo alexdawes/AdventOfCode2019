@@ -366,8 +366,9 @@ namespace AoC._13
             public async Task PlayStep(Mode mode)
             {
                 await _program.WaitUntilInputRequired();
-                Console.Clear();
-                Console.WriteLine(this);
+                //Console.Clear();
+                //Console.WriteLine(this);
+                //await Task.Delay(20);
                 switch (mode)
                 {
                     case Mode.Manual:
@@ -386,7 +387,6 @@ namespace AoC._13
 
                         break;
                     case Mode.Automatic:
-                        await Task.Delay(20);
                         var bat = FindBat();
                         var ball = FindBall();
                         _input.Add(ball.X.CompareTo(bat.X));
@@ -511,9 +511,9 @@ namespace AoC._13
             var program = await ParseInput();
             program.Set(0, 2);
             var game = new Game(program);
-            game.TurnOnEasyMode();
+            // game.TurnOnEasyMode();
             var t = game.Start();
-            await game.Play(Mode.DoNothing);
+            await game.Play(Mode.Automatic);
             return game.Score;
         }
 
