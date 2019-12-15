@@ -133,7 +133,6 @@ namespace AoC._10
                                       .OrderBy(g => GetAngle(station, g.First())).ToList();
 
             var destroyed = new List<(int X, int Y)>();
-            var count = 0;
             var pointer = 0;
             while (orderedGroups.Any())
             {
@@ -154,8 +153,6 @@ namespace AoC._10
                 {
                     pointer = 0;
                 }
-                
-                count++;
             }
 
             var chosen = destroyed[199];

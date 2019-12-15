@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -235,7 +234,7 @@ namespace AoC._12
                 }
             }
 
-            return LCM(LCM((long)xCycle, (long)yCycle), (long)zCycle);
+            return LCM(LCM(xCycle, yCycle), zCycle);
         }
 
         public async Task Run()
