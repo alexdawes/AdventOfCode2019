@@ -39,22 +39,35 @@ namespace AoC._07
             var computerD = new IntCode.Computer(programD);
             var computerE = new IntCode.Computer(programE);
 
-            var streamA = new IntCode.IoStream { a, 0 };
-            var streamB = new IntCode.IoStream {b};
-            var streamC = new IntCode.IoStream {c};
-            var streamD = new IntCode.IoStream {d};
-            var streamE = new IntCode.IoStream {e};
+            computerB.Input = computerA.Output;
+            computerC.Input = computerB.Output;
+            computerD.Input = computerC.Output;
+            computerE.Input = computerD.Output;
+            computerA.Input = computerE.Output;
+
+            await computerA.Input.Write(a);
+            await computerA.Input.Write(0);
+            await computerB.Input.Write(b);
+            await computerC.Input.Write(c);
+            await computerD.Input.Write(d);
+            await computerE.Input.Write(e);
+
+            computerA.Start();
+            computerB.Start();
+            computerC.Start();
+            computerD.Start();
+            computerE.Start();
 
             await Task.WhenAll(new[]
             {
-                computerA.RunToCompletion(streamA, streamB),
-                computerB.RunToCompletion(streamB, streamC),
-                computerC.RunToCompletion(streamC, streamD),
-                computerD.RunToCompletion(streamD, streamE),
-                computerE.RunToCompletion(streamE, streamA)
+                computerA.WaitUntilCompleted(),
+                computerB.WaitUntilCompleted(),
+                computerC.WaitUntilCompleted(),
+                computerD.WaitUntilCompleted(),
+                computerE.WaitUntilCompleted()
             });
 
-            return streamA.Last();
+            return computerE.Output.Last();
         }
         
         private async Task<long> Part1()

@@ -137,15 +137,15 @@ namespace AoC._11
             var program = await IntCode.Program.Load("11/input");
             var computer = new IntCode.Computer(program);
             var canvas = new Canvas();
-            var input = new IntCode.IoStream { (int)Color.Black };
-            var output = new IntCode.IoStream();
-            var task = computer.RunToCompletion(input, output);
+            await computer.Input.Write((int)Color.Black);
+            computer.Start();
+            var task = computer.WaitUntilCompleted();
             while (true)
             {
-                var colorToPaint = (Color)(await output.WaitNext());
-                var rotation = (Rotation)(await output.WaitNext());
+                var colorToPaint = (Color)(await computer.Output.Read());
+                var rotation = (Rotation)(await computer.Output.Read());
                 canvas.Iterate(colorToPaint, rotation);
-                input.Add((int)canvas.GetCurrentColor());
+                await computer.Input.Write((int)canvas.GetCurrentColor());
                 if (task.IsCompleted)
                 {
                     break;
@@ -160,15 +160,15 @@ namespace AoC._11
             var program = await IntCode.Program.Load("11/input");
             var computer = new IntCode.Computer(program);
             var canvas = new Canvas();
-            var input = new IntCode.IoStream { (int)Color.White };
-            var output = new IntCode.IoStream();
-            var task = computer.RunToCompletion(input, output);
+            await computer.Input.Write((int)Color.White);
+            computer.Start();
+            var task = computer.WaitUntilCompleted();
             while (true)
             {
-                var colorToPaint = (Color)(await output.WaitNext());
-                var rotation = (Rotation)(await output.WaitNext());
+                var colorToPaint = (Color)(await computer.Output.Read());
+                var rotation = (Rotation)(await computer.Output.Read());
                 canvas.Iterate(colorToPaint, rotation);
-                input.Add((int)canvas.GetCurrentColor());
+                await computer.Input.Write((int)canvas.GetCurrentColor());
                 if (task.IsCompleted)
                 {
                     break;

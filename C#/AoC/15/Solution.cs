@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -140,27 +137,21 @@ namespace AoC._15
         public sealed class Ship
         {
             private readonly IntCode.Program _program;
-            private readonly IntCode.Computer _computer;
-            private readonly IntCode.IoStream _input;
-            private readonly IntCode.IoStream _output;
+            public IntCode.Computer Computer { get; }
             public Robot Robot { get; }
-
-            private readonly Task _runTask;
 
             public Ship(IntCode.Program program)
             {
                 _program = program;
-                _computer = new IntCode.Computer(_program);
-                _input = new IntCode.IoStream();
-                _output = new IntCode.IoStream();
-                _runTask = _computer.RunToCompletion(_input, _output);
+                Computer = new IntCode.Computer(_program);
+                Computer.Start();
                 Robot = new Robot((0,0));
             }
 
             public async Task<Response> MoveRobot(Direction direction)
             {
-                _input.Add((long)direction);
-                var result = (Response)await _output.WaitNext();
+                await Computer.Input.Write((long)direction);
+                var result = (Response)await Computer.Output.Read();
                 if (result == Response.Success || result == Response.SuccessAndFinished)
                 {
                     Robot.Move(direction);
@@ -205,7 +196,9 @@ namespace AoC._15
 
                 result.AppendLine(line.ToString());
             }
-            
+
+            Thread.Sleep(10);
+            Console.Clear();
             Console.WriteLine($"\n{result}\n");
         }
         
@@ -215,107 +208,124 @@ namespace AoC._15
             var ship = new Ship(program);
             var map = new Map(new Dictionary<(int X, int Y), TileType> {{ ship.Robot.Position, TileType.Empty }});
 
-            var explored = new HashSet<(int X, int Y)> { (0,0) };
-            var distances = new Dictionary<(int X, int Y), int> {{ (0,0), 0 }};
-
-            //Draw(map, ship.Robot);
-            while (true)
+            try
             {
-                var maxDistance = distances.Values.Max();
-                var nextToProcess = distances.Keys.Where(k => distances[k] == maxDistance).ToList();
-                foreach (var coord in nextToProcess)
-                {
-                    var path = map.GetPath(ship.Robot.Position, coord);
-                    foreach (var direction in path)
-                    {
-                        await ship.MoveRobot(direction);
-                    }
+                var explored = new HashSet<(int X, int Y)> {(0, 0)};
+                var distances = new Dictionary<(int X, int Y), int> {{(0, 0), 0}};
 
-                    foreach (var direction in Directions)
+                Draw(map, ship.Robot);
+                while (true)
+                {
+                    var maxDistance = distances.Values.Max();
+                    var nextToProcess = distances.Keys.Where(k => distances[k] == maxDistance).ToList();
+                    foreach (var coord in nextToProcess)
                     {
-                        var next = GetNext(coord, direction);
-                        if (!explored.Contains(next))
+                        var path = map.GetPath(ship.Robot.Position, coord);
+                        foreach (var direction in path)
                         {
-                            var response = await ship.MoveRobot(direction);
-                            if (response == Response.SuccessAndFinished)
+                            await ship.MoveRobot(direction);
+                        }
+
+                        foreach (var direction in Directions)
+                        {
+                            var next = GetNext(coord, direction);
+                            if (!explored.Contains(next))
                             {
-                                //Draw(map, ship.Robot);
-                                return maxDistance + 1;
-                            }
-                            else if (response == Response.Success)
-                            {
-                                //Draw(map, ship.Robot);
-                                await ship.MoveRobot(GetOpposite(direction));
-                                //Draw(map, ship.Robot);
-                                distances[next] = maxDistance + 1;
-                                explored.Add(next);
-                                map.SetType(next, TileType.Empty);
-                            }
-                            else if (response == Response.Blocked)
-                            {
-                                map.SetType(next, TileType.Wall);
+                                var response = await ship.MoveRobot(direction);
+                                if (response == Response.SuccessAndFinished)
+                                {
+                                    Draw(map, ship.Robot);
+                                    return maxDistance + 1;
+                                }
+                                else if (response == Response.Success)
+                                {
+                                    Draw(map, ship.Robot);
+                                    await ship.MoveRobot(GetOpposite(direction));
+                                    Draw(map, ship.Robot);
+                                    distances[next] = maxDistance + 1;
+                                    explored.Add(next);
+                                    map.SetType(next, TileType.Empty);
+                                }
+                                else if (response == Response.Blocked)
+                                {
+                                    map.SetType(next, TileType.Wall);
+                                }
                             }
                         }
                     }
                 }
+            }
+            finally
+            {
+                ship.Computer.Stop();
             }
         }
 
         private async Task<int> Part2()
         {
             var program = await IntCode.Program.Load("15/input");
+            
             var ship = new Ship(program);
             var map = new Map(new Dictionary<(int X, int Y), TileType> { { ship.Robot.Position, TileType.Empty } });
 
-            var explored = new HashSet<(int X, int Y)> { (0, 0) };
-            var distances = new Dictionary<(int X, int Y), int> { { (0, 0), 0 } };
-
-            var previousExploredCount = 0;
-            //Draw(map, ship.Robot);
-            while (explored.Count != previousExploredCount)
+            try
             {
-                previousExploredCount = explored.Count;
-                var maxDistance = distances.Values.Max();
-                var nextToProcess = distances.Keys.Where(k => distances[k] == maxDistance).ToList();
-                foreach (var coord in nextToProcess)
-                {
-                    var path = map.GetPath(ship.Robot.Position, coord);
-                    foreach (var direction in path)
-                    {
-                        await ship.MoveRobot(direction);
-                    }
+                var explored = new HashSet<(int X, int Y)> {(0, 0)};
+                var distances = new Dictionary<(int X, int Y), int> {{(0, 0), 0}};
 
-                    foreach (var direction in Directions)
+
+                var previousExploredCount = 0;
+                //Draw(map, ship.Robot);
+                while (explored.Count != previousExploredCount)
+                {
+                    previousExploredCount = explored.Count;
+                    var maxDistance = distances.Values.Max();
+                    var nextToProcess = distances.Keys.Where(k => distances[k] == maxDistance).ToList();
+                    foreach (var coord in nextToProcess)
                     {
-                        var next = GetNext(coord, direction);
-                        if (!explored.Contains(next))
+                        var path = map.GetPath(ship.Robot.Position, coord);
+                        foreach (var direction in path)
                         {
-                            var response = await ship.MoveRobot(direction);
-                            if (response == Response.SuccessAndFinished)
+                            await ship.MoveRobot(direction);
+                        }
+
+                        foreach (var direction in Directions)
+                        {
+                            var next = GetNext(coord, direction);
+                            if (!explored.Contains(next))
                             {
-                                //Draw(map, ship.Robot);
-                                await ship.MoveRobot(GetOpposite(direction));
-                                //Draw(map, ship.Robot);
-                                distances[next] = maxDistance + 1;
-                                explored.Add(next);
-                                map.SetType(next, TileType.Target);
-                            }
-                            else if (response == Response.Success)
-                            {
-                                //Draw(map, ship.Robot);
-                                await ship.MoveRobot(GetOpposite(direction));
-                                //Draw(map, ship.Robot);
-                                distances[next] = maxDistance + 1;
-                                explored.Add(next);
-                                map.SetType(next, TileType.Empty);
-                            }
-                            else if (response == Response.Blocked)
-                            {
-                                map.SetType(next, TileType.Wall);
+                                var response = await ship.MoveRobot(direction);
+                                if (response == Response.SuccessAndFinished)
+                                {
+                                    //Draw(map, ship.Robot);
+                                    await ship.MoveRobot(GetOpposite(direction));
+                                    //Draw(map, ship.Robot);
+                                    distances[next] = maxDistance + 1;
+                                    explored.Add(next);
+                                    map.SetType(next, TileType.Target);
+                                }
+                                else if (response == Response.Success)
+                                {
+                                    //Draw(map, ship.Robot);
+                                    await ship.MoveRobot(GetOpposite(direction));
+                                    //Draw(map, ship.Robot);
+                                    distances[next] = maxDistance + 1;
+                                    explored.Add(next);
+                                    map.SetType(next, TileType.Empty);
+                                }
+                                else if (response == Response.Blocked)
+                                {
+                                    map.SetType(next, TileType.Wall);
+                                }
                             }
                         }
                     }
+
                 }
+            }
+            finally
+            {
+                ship.Computer.Stop();
             }
 
             var target = map.Tiles.First(kvp => kvp.Value == TileType.Target).Key;

@@ -11,20 +11,20 @@ namespace AoC._09
         {
             var program = await IntCode.Program.Load("09/input");
             var computer = new IntCode.Computer(program);
-            var input = new IntCode.IoStream {1};
-            var output = new IntCode.IoStream();
-            await computer.RunToCompletion(input, output);
-            return output.Last();
+            await computer.Input.Write(1);
+            computer.Start();
+            await computer.WaitUntilCompleted();
+            return computer.Output.Last();
         }
 
         private async Task<long> Part2()
         {
             var program = await IntCode.Program.Load("09/input");
             var computer = new IntCode.Computer(program);
-            var input = new IntCode.IoStream { 2 };
-            var output = new IntCode.IoStream();
-            await computer.RunToCompletion(input, output);
-            return output.Last();
+            await computer.Input.Write(2);
+            computer.Start();
+            await computer.WaitUntilCompleted();
+            return computer.Output.Last();
         }
 
         public async Task Run()

@@ -30,8 +30,6 @@ namespace AoC._13
         {
             private readonly IntCode.Program _program;
             private readonly IntCode.Computer _computer;
-            private readonly IntCode.IoStream _input;
-            private readonly IntCode.IoStream _output;
             private Task _runTask;
             private readonly object _lock = new object();
 
@@ -43,21 +41,20 @@ namespace AoC._13
             public Game(IntCode.Program program)
             {
                 _program = program;
-                _input = new IntCode.IoStream();
-                _output = new IntCode.IoStream();
                 _computer = new IntCode.Computer(_program);
             }
 
             public Task Start()
             {
-                _runTask = _computer.RunToCompletion(_input, _output);
+                _computer.Start();
+                _runTask = _computer.WaitUntilCompleted();
                 var t = Task.Run(async () =>
                 {
-                    while (!_runTask.IsCompleted || _output.Any())
+                    while (!_runTask.IsCompleted || _computer.Output.Any())
                     {
-                        var x = await _output.WaitNext();
-                        var y = await _output.WaitNext();
-                        var z = await _output.WaitNext();
+                        var x = await _computer.Output.Read();
+                        var y = await _computer.Output.Read();
+                        var z = await _computer.Output.Read();
                         Set(x, y, z);
                     }
                 });
@@ -84,13 +81,13 @@ namespace AoC._13
                         switch (Console.ReadKey().Key)
                         {
                             case ConsoleKey.LeftArrow:
-                                _input.Add(-1);
+                                await _computer.Input.Write(-1);
                                 break;
                             case ConsoleKey.RightArrow:
-                                _input.Add(1);
+                                await _computer.Input.Write(1);
                                 break;
                             default:
-                                _input.Add(0);
+                                await _computer.Input.Write(0);
                                 break;
                         }
 
@@ -98,11 +95,11 @@ namespace AoC._13
                     case Mode.Automatic:
                         var bat = FindBat();
                         var ball = FindBall();
-                        _input.Add(ball.X.CompareTo(bat.X));
+                        await _computer.Input.Write(ball.X.CompareTo(bat.X));
                         break;
                     case Mode.DoNothing:
                         await Task.Delay(20);
-                        _input.Add(0);
+                        await _computer.Input.Write(0);
                         break;
                 }
             }

@@ -12,7 +12,8 @@ namespace AoC._02
             program.Set(1, 12);
             program.Set(2, 2);
             var computer = new IntCode.Computer(program);
-            await computer.RunToCompletion(new IntCode.IoStream(), new IntCode.IoStream());
+            computer.Start();
+            await computer.WaitUntilCompleted();
             return program.Get(0);
         }
 
@@ -27,7 +28,8 @@ namespace AoC._02
                     program.Set(1, noun);
                     program.Set(2, verb);
                     var computer = new IntCode.Computer(program);
-                    await computer.RunToCompletion(new IntCode.IoStream(), new IntCode.IoStream());
+                    computer.Start();
+                    await computer.WaitUntilCompleted();
                     var actual = program.Get(0);
                     if (actual == expected)
                     {

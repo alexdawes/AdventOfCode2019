@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AoC.Utils.IntCode
@@ -8,12 +9,20 @@ namespace AoC.Utils.IntCode
         private int _pointer;
         private int _offset;
         private readonly Program _program;
+        private Task _runTask;
+        private readonly object _lock = new object();
+        private CancellationTokenSource _cts;
+
+        public IoStream Input { get; set; }
+        public IoStream Output { get; set; }
 
         private TaskCompletionSource<int> _tcs = new TaskCompletionSource<int>();
 
         public Computer(Program program)
         {
             _program = program;
+            Input = new IoStream();
+            Output = new IoStream();
         }
 
         public async Task WaitUntilInputRequired()
@@ -54,7 +63,7 @@ namespace AoC.Utils.IntCode
             // Console.WriteLine($"[ {string.Join(" ", Enumerable.Range(0, count).Select(i => _buffer[_pointer + i]))} ] ({_pointer}) {extra}");
         }
 
-        private async Task RunNext(IoStream input, IoStream output)
+        private async Task RunNext()
         {
             var instruction = Instruction.Parse(_program[_pointer]);
             switch (instruction.OpCode)
@@ -81,7 +90,8 @@ namespace AoC.Utils.IntCode
                 }
                 case 3:
                 {
-                    var t = input.WaitNext();
+                    var t = Input.Read(_cts.Token);
+
                     if (!t.IsCompleted)
                     {
                         _tcs.SetResult(0);
@@ -99,7 +109,7 @@ namespace AoC.Utils.IntCode
                 {
                     var o = GetReadParameter(instruction, 0);
                     Log(2, $"=> {o}");
-                    output.Add(o);
+                    await Output.Write(o);
                     _pointer += 2;
                     break;
                 }
@@ -171,11 +181,51 @@ namespace AoC.Utils.IntCode
             }
         }
 
-        public async Task RunToCompletion(IoStream input, IoStream output)
+        public void Start()
         {
-            while (_program.Get(_pointer) != 99)
+            lock (_lock)
             {
-                await RunNext(input, output);
+                if (_runTask == null)
+                {
+                    _cts = new CancellationTokenSource();
+                    _runTask = RunToCompletion();
+                }
+            }
+        }
+
+        public async Task WaitUntilCompleted()
+        {
+            Task t;
+            lock (_lock)
+            {
+                t = _runTask ?? Task.CompletedTask;
+            }
+
+            await t;
+        }
+
+        public void Stop()
+        {
+            CancellationTokenSource cts = _cts;
+
+            if (cts != null)
+            {
+                lock (_lock)
+                {
+                    cts.Cancel();
+                    cts.Token.WaitHandle.WaitOne();
+                    _runTask = null;
+                    _cts = null;
+                }
+            }
+        }
+
+
+        private async Task RunToCompletion()
+        {
+            while (!_cts.Token.IsCancellationRequested && _program.Get(_pointer) != 99)
+            {
+                await RunNext();
             }
         }
     }

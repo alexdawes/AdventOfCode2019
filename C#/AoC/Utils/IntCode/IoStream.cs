@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AoC.Utils.IntCode
@@ -28,7 +29,13 @@ namespace AoC.Utils.IntCode
             tcs.SetResult(0);
         }
 
-        public async Task<long> WaitNext()
+        public async Task Write(long item)
+        {
+            await Task.Yield();
+            Add(item);
+        }
+
+        public async Task<long> Read(CancellationToken ct = default(CancellationToken))
         {
             var waitTask = _tcs.Task;
             while (true)
@@ -39,7 +46,7 @@ namespace AoC.Utils.IntCode
                 }
                 else
                 {
-                    await waitTask;
+                    await Task.Run(async () => await waitTask, ct);
                     waitTask = _tcs.Task;
                 }
             }
