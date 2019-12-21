@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -46,11 +47,46 @@ namespace AoC.Utils.IntCode
                 }
                 else
                 {
-                    await Task.Run(async () => await waitTask, ct);
+                    var cts = new CancellationTokenSource();
+                    var ctsJoin = CancellationTokenSource.CreateLinkedTokenSource(ct, cts.Token);
+                    var cancellationTask = Task.Delay(-1, ctsJoin.Token);
+                    var r = await Task.WhenAny(waitTask, cancellationTask);
+                    if (r == cancellationTask)
+                    {
+                        throw new TaskCanceledException();
+                    }
+                    cts.Cancel();
                     waitTask = _tcs.Task;
                 }
             }
         }
+
+
+        public async Task<long> Peek(CancellationToken ct = default(CancellationToken))
+        {
+            var waitTask = _tcs.Task;
+            while (true)
+            {
+                if (_queue.TryPeek(out long result))
+                {
+                    return result;
+                }
+                else
+                {
+                    var cts = new CancellationTokenSource();
+                    var ctsJoin = CancellationTokenSource.CreateLinkedTokenSource(ct, cts.Token);
+                    var cancellationTask = Task.Delay(-1, ctsJoin.Token);
+                    var r = await Task.WhenAny(waitTask, cancellationTask);
+                    if (r == cancellationTask)
+                    {
+                        throw new TaskCanceledException();
+                    }
+                    cts.Cancel();
+                    waitTask = _tcs.Task;
+                }
+            }
+        }
+
 
         public IEnumerable<long> AsEnumerable() => _queue.ToList().AsEnumerable();
 
@@ -62,6 +98,74 @@ namespace AoC.Utils.IntCode
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        public async Task WriteString(string input)
+        {
+            foreach (var character in input)
+            {
+                await WriteChar(character);
+            }
+        }
+
+        public async Task WriteChar(char character)
+        {
+            var value = (long)character;
+            await Write(value);
+        }
+
+        public async Task<char> ReadCharacter(CancellationToken ct = default(CancellationToken))
+        {
+            var result = await Read(ct);
+            return (char)result;
+        }
+
+        public async Task<string> ReadLine(CancellationToken ct = default(CancellationToken))
+        {
+            await Task.Yield();
+            var s = "";
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    var next = await Peek(ct);
+                    if (next > 127 || (char)next == '\n')
+                    {
+                        return s;
+                    }
+
+                    s += (char)await Read(ct);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+            }
+
+            return s;
+        }
+
+        public async Task<string> ReadString(CancellationToken ct = default(CancellationToken))
+        {
+            await Task.Yield();
+            var s = "";
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    var next = await Peek(ct);
+                    if (next > 127)
+                    {
+                        return s;
+                    }
+
+                    s += (char)await Read(ct);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+            }
+
+            return s;
         }
     }
 }
