@@ -25,9 +25,20 @@ namespace AoC.Utils.IntCode
             Output = new IoStream();
         }
 
-        public async Task WaitUntilInputRequired()
+        public async Task WaitUntilInputRequired(CancellationToken ct = default(CancellationToken))
         {
-            await _tcs.Task;
+            var cts = new CancellationTokenSource();
+            var token = CancellationTokenSource.CreateLinkedTokenSource(ct, cts.Token).Token;
+            var cancellationTokenTask = Task.Delay(-1, token);
+
+            if (await Task.WhenAny(_tcs.Task, cancellationTokenTask) == cancellationTokenTask)
+            {
+                throw new TaskCanceledException();
+            }
+            else
+            {
+                cts.Cancel();
+            }
         }
 
         private long GetReadParameter(Instruction instruction, int index)
@@ -193,7 +204,7 @@ namespace AoC.Utils.IntCode
             }
         }
 
-        public async Task WaitUntilCompleted()
+        public async Task WaitUntilCompleted(CancellationToken ct = default(CancellationToken))
         {
             Task t;
             lock (_lock)
@@ -201,7 +212,19 @@ namespace AoC.Utils.IntCode
                 t = _runTask ?? Task.CompletedTask;
             }
 
-            await t;
+
+            var cts = new CancellationTokenSource();
+            var token = CancellationTokenSource.CreateLinkedTokenSource(ct, cts.Token).Token;
+            var cancellationTokenTask = Task.Delay(-1, token);
+
+            if (await Task.WhenAny(t, cancellationTokenTask) == cancellationTokenTask)
+            {
+                throw new TaskCanceledException();
+            }
+            else
+            {
+                cts.Cancel();
+            }
         }
 
         public void Stop()
